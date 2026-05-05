@@ -116,12 +116,26 @@ would be replaced by CloudWatch Container Insights.
 `make ci` runs the full pipeline locally:
 
 1. **Lint** — `ruff check`
-2. **Test** — `pytest` against the test suite
-3. **Build** — `docker build` of the production image, tagged with Git short SHA
+2. **Test** — `pytest` against the test suite (5 smoke tests covering all 
+   endpoints + `/metrics`)
+3. **Build** — `docker build` of the production image, tagged with Git short SHA 
+   (e.g. `aws-platform-api:ci-e3b6483`)
 4. **Scan** — Trivy security scan, filtered to HIGH/CRITICAL severity
 
-The same pipeline runs in GitHub Actions on every push, ensuring local and 
-remote builds stay in sync.
+### Vulnerability triage
+
+The scan distinguishes between:
+
+- **Application dependency findings** — Vulnerability scans are point-in-time. CVE-2024-47874 was identified and remediated by upgrading FastAPI from 0.115.0 to 0.116.0. Subsequent scans detected CVE-2025-62727, disclosed after the upgrade — illustrating that supply-chain security is continuous, not one-time. In production, this is addressed via Dependabot/Renovate-style automated dependency PRs and scheduled rescan jobs.
+
+- **OS package findings without upstream fix** — common in Debian-based images 
+  where CVEs are disclosed before patches are released to the stable channel. 
+  These are reported with no `Fixed Version` available and are tracked but 
+  not actionable from the consumer side. Mitigation in production is base 
+  image rotation as upstream patches land.
+
+The same pattern applies in production CI: fail fast on findings with 
+upstream fixes; track-and-monitor findings without them.
 
 ## Stack
 
